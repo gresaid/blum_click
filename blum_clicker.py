@@ -6,7 +6,6 @@ import cv2
 import keyboard
 import mss
 import numpy as np
-import pyautogui
 import win32api
 import win32con
 import win32gui
@@ -78,32 +77,25 @@ class AutoClicker:
         return False
 
     def click_color_areas(self):
-        screen_width, screen_height = pyautogui.size()
-        center_x, center_y = screen_width // 2, screen_height // 2
-        region_width, region_height = 380, 650
-        region_left = center_x - region_width // 2
-        region_top = center_y - region_height // 2
-        cv2.namedWindow("Put blumapp here", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Put blumapp here", region_width, region_height)
-        print("Put blum app in the window. Don't move the window. Then press any key to start")
-        hwnd = win32gui.FindWindow(None, "Put blumapp here")
-        win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE,
-                               win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_LAYERED)
-        win32gui.SetLayeredWindowAttributes(hwnd, 0, int(255 * 0.5), win32con.LWA_ALPHA)
-        cv2.imshow("Put blumapp here", np.zeros((region_height, region_width, 3), dtype=np.uint8))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        window_title = "TelegramDesktop"
+        hwnd = win32gui.FindWindow(None, window_title)
 
+        if hwnd == 0:
+            raise Exception(f"Window with title '{window_title}' not found.")
+
+        # Получить размер окна
+        rect = win32gui.GetWindowRect(hwnd)
+        logger.log(rect)
         with mss.mss() as sct:
             grave_key_code = 41
             keyboard.add_hotkey(grave_key_code, self.toggle_script)
             while True:
                 if self.running:
                     monitor = {
-                        "top": region_top,
-                        "left": region_left,
-                        "width": region_width,
-                        "height": region_height
+                        "top": rect[1],
+                        "left": rect[0],
+                        "width": rect[2] - rect[0],
+                        "height": rect[3] - rect[1]
                     }
                     img = np.array(sct.grab(monitor))
                     img_bgr = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
@@ -135,7 +127,9 @@ class AutoClicker:
 
                     time.sleep(0.222)
                     self.iteration_count += 1
-
+                    if self.iteration_count >= 5:
+                        self.clicked_points.clear()
+                        self.iteration_count = 0
 
 if __name__ == "__main__":
     logger = Logger("[t.me/cryptofolkens]")
